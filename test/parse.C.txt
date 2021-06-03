@@ -1,0 +1,96 @@
+    LD A,D        ; 7a
+    AND #F8       ; e6 f8
+    RRCA          ; 0f
+    SCF           ; 37
+    RRA           ; 1f
+    RRCA          ; 0f
+    LD C,A        ; 4f
+    XOR E         ; ab
+    AND #07       ; e6 07
+    XOR E         ; ab
+    RRCA          ; 0f
+    RRCA          ; 0f
+    RRCA          ; 0f
+    LD L,A        ; 6f
+    LD A,C        ; 79
+    XOR D         ; aa
+    AND #F8       ; e6 f8
+    XOR D         ; aa
+    LD H,A        ; 67
+    LD (IX),D     ; dd 72 00
+    LD L,(IX)     ; dd 6e 00
+    LD H,(IX+1)   ; dd 66 01
+    PUSH IX       ; dd e5
+    LD A,(#1234)  ; 3a 34 12
+    POP IX        ; dd e1
+    DEC IX        ; dd 2b
+    INC IXL       ; dd 2c
+    PUSH BC       ; c5
+    INC IX        ; dd 23
+    INC IX        ; dd 23
+    INC IX        ; dd 23
+    LD B,A        ; 47
+    POP BC        ; c1
+    CALL #1234    ; cd 34 12
+    BIT 0,A       ; cb 47
+    CALL Z,#620A  ; cc 0a 62
+    LD (#3F4F),A  ; 32 4f 3f
+    LD (#5F6F),HL ; 22 6f 5f
+    LD A,(#3F4F)  ; 3a 4f 3f
+    LD HL,(#5F6F) ; 2a 6f 5f
+    LD BC,(#7F8F) ; ed 4b 8f 7f
+    DI            ; f3
+    LD (HL),C     ; 71
+    INC HL        ; 23
+    LD (HL),B     ; 70
+    DEC HL        ; 2b
+    LD (IX+1),#05 ; dd 36 01 05
+    LD (IX),A     ; dd 77 00
+    LD (IX),B     ; dd 70 00
+    LD (IX),C     ; dd 71 00
+    LD (IX+1),B   ; dd 70 01
+    LD (IX+5),B   ; dd 70 05
+    LD C,(HL)     ; 4e
+    INC HL        ; 23
+    LD B,(HL)     ; 46
+    DEC HL        ; 2b
+    LD (IX+4),C   ; dd 71 04
+    LD (IX+5),B   ; dd 70 05
+    NOP           ; 00
+    LD SP,#6100   ; 31 00 61
+    LD IX,#EEEE   ; dd 21 ee ee
+    LD IY,#DDDD   ; fd 21 dd dd
+    LD DE,#8080   ; 11 80 80
+    LD HL,#AABB   ; 21 bb aa
+    LD (IX),D     ; dd 72 00
+    LD (IX+2),E   ; dd 73 02
+    LD (IY),H     ; fd 74 00
+    LD (IY-2),L   ; fd 75 fe
+    LD A,#07      ; 3e 07
+    LD B,#02      ; 06 02
+    SUB B         ; 90
+    CP #06        ; fe 06
+    JR Z,#06      ; 28 06
+    JR C,#0A      ; 38 0a
+    JR NC,#0E     ; 30 0e
+    DI            ; f3
+    HALT          ; 76
+    LD A,#00      ; 3e 00
+    OUT (#FE),A   ; d3 fe
+    DI            ; f3
+    HALT          ; 76
+    LD A,#01      ; 3e 01
+    OUT (#FE),A   ; d3 fe
+    DI            ; f3
+    HALT          ; 76
+    LD A,#02      ; 3e 02
+    OUT (#FE),A   ; d3 fe
+    DI            ; f3
+    HALT          ; 76
+    LD A,#04      ; 3e 04
+    LD HL,#5800   ; 21 00 58
+    LD DE,#5801   ; 11 01 58
+    LD BC,#02FF   ; 01 ff 02
+    LD (HL),A     ; 77
+    LDIR          ; ed b0
+    RET           ; c9

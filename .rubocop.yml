@@ -1,0 +1,52 @@
+AllCops:
+  TargetRubyVersion: 2.5
+
+Style/WordArray:
+  Enabled: false
+
+Layout/SpaceBeforeBlockBraces:
+  Exclude:
+    - 'lib/z80_disassembler.rb'
+
+Metrics:
+  Enabled: false
+
+Layout/ExtraSpacing:
+  Enabled: false
+
+Layout/LineLength:
+  Max: 135
+
+Layout/SpaceAfterComma:
+  Enabled: false
+
+Layout/SpaceInsideArrayLiteralBrackets:
+  Enabled: false
+
+Lint/UnusedBlockArgument:
+  Exclude:
+    - 'lib/z80_disassembler.rb'
+
+Metrics/BlockLength:
+  Max: 30
+
+Metrics/ClassLength:
+  Max: 200
+
+Style/CommentedKeyword:
+  Enabled: false
+
+Style/Documentation:
+  Enabled: false
+
+Style/ParallelAssignment:
+  Exclude:
+    - 'lib/z80_disassembler.rb'
+
+Style/Semicolon:
+  Exclude:
+    - 'lib/z80_disassembler.rb'
+
+Style/StringConcatenation:
+  Exclude:
+    - 'lib/z80_disassembler.rb'
