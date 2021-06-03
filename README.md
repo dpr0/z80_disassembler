@@ -27,8 +27,9 @@ Or install it yourself as:
 
 - example: parse.C >> parse.C.txt and compare with parse.txt
 ```ruby
-Z80Disassembler::Disassembler.new(params[:file], params[:org]).start
+Z80Disassembler::Disassembler.new(params[:file], 32768).start
 ```
+return hash { 32768=>["#8000", "PUSH IY", "fd e5"], 32770=>[...], ... }
 
 ## Development
 

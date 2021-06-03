@@ -1,3 +1,0 @@
-    LD IXL,#04    ; dd 2e 04
-    NOP           ; 00
-    RET           ; c9

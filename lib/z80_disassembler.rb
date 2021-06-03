@@ -53,7 +53,6 @@ module Z80Disassembler
         @addr += @bytes.size
         @bytes = []
       end
-
       result
     end
 
@@ -70,6 +69,8 @@ module Z80Disassembler
         temp.sub(' H', " #{reg}H")
       elsif temp.include?(',H')
         temp.sub(',H', ",#{reg}H")
+      else
+        temp
       end
     end
 
@@ -97,8 +98,8 @@ module Z80Disassembler
           case @y
           when 0 then 'NOP'
           when 1 then 'EX AF, AF\''
-          when 2 then calc_bytes(->(a, b){ "DJNZ ##{b}" },    nil,        1)
-          when 3 then calc_bytes(->(a, b){ "JR ##{b}" },      nil,        1)
+          when 2 then calc_bytes(->(a, b){ "DJNZ ##{b}" },    nil,          1)
+          when 3 then calc_bytes(->(a, b){ "JR ##{b}" },      nil,          1)
           else        calc_bytes(->(a, b){ "JR #{a},##{b}" }, T_CC[@y - 4], 1)
           end
         when 1 then @q ? "ADD HL,#{T_RP[@p]}" : calc_bytes(->(a, b){ "LD #{a},##{b}" }, T_RP[@p], 2)
