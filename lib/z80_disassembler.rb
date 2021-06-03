@@ -15,8 +15,8 @@ module Z80Disassembler
     T_RP  = [   'BC',   'DE',   'HL',   'SP'].freeze
     T_RP2 = [   'BC',   'DE',   'HL',   'AF'].freeze
 
-    def initialize(file_name)
-      @file_name = file_name
+    def initialize(file_name, addr = 32768)
+      @file_name = file_name; @addr = addr.to_i
       @x = 0; @y = 0; @z = 0; @p = 0; @q = 0; @xx = nil
       @lyambda = nil; @prefix = nil; @prev = nil, @bytes = []
     end
