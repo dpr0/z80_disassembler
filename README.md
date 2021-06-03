@@ -1,8 +1,6 @@
 # Z80Disassembler
 
-ruby Z80 disassembler
-
-TODO: Delete this and the text above, and describe your gem
+Ruby ZILOG Z80 disassembler
 
 ## Installation
 
@@ -22,9 +20,15 @@ Or install it yourself as:
 
 ## Usage
 
-# ruby disasm.rb filename
-# prepare: sjasmplus parse.asm    - компилим исходник parse.asm в parse.C
-# example: ruby disasm.rb parse.C - дизассемблируем parse.C в parse.C.txt и сравниваем с parse.txt
+- prepare: parse.asm >> parse.C
+```bash
+ sjasmplus parse.asm
+```
+
+- example: parse.C >> parse.C.txt and compare with parse.txt
+```ruby
+::Z80Disassembler::Disassembler.new('test/parse.C').start
+```
 
 ## Development
 
@@ -34,7 +38,7 @@ To install this gem onto your local machine, run `bundle exec rake install`. To 
 
 ## Contributing
 
-Bug reports and pull requests are welcome on GitHub at https://github.com/[USERNAME]/z80_disassembler. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/[USERNAME]/z80_disassembler/blob/master/CODE_OF_CONDUCT.md).
+Bug reports and pull requests are welcome on GitHub at https://github.com/dpr0/z80_disassembler. This project is intended to be a safe, welcoming space for collaboration, and contributors are expected to adhere to the [code of conduct](https://github.com/dpr0/z80_disassembler/blob/master/CODE_OF_CONDUCT.md).
 
 ## License
 

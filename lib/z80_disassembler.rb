@@ -22,8 +22,7 @@ module Z80Disassembler
     end
 
     def start
-      result_file = File.open("#{@file_name}.txt", 'w')
-
+      result = []
       File.open(@file_name).each_byte do |byte|
         load_vars(byte)
         str = case @prefix
@@ -51,13 +50,14 @@ module Z80Disassembler
               end
         @prev = byte.to_s(16)
         @bytes << @prev.rjust(2, '0')
-        if str
-          result_file << "    #{str.ljust(13, ' ')} ; #{@bytes.join(' ')}\n"
-          @bytes = []
-        end
+        next unless str
+
+        result << ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' ')]
+        @addr += @bytes.size
+        @bytes = []
       end
 
-      result_file.close
+      result
     end
 
     private
