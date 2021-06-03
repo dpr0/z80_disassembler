@@ -18,11 +18,11 @@ module Z80Disassembler
     def initialize(file_name, addr = 32_768)
       @file_name = file_name; @addr = addr.to_i
       @x = 0; @y = 0; @z = 0; @p = 0; @q = 0; @xx = nil
-      @lambda = nil; @prefix = nil; @prev = nil, @bytes = []
+      @lambda = nil; @prefix = nil; @prev = nil
+      @bytes = []; @ascii = []; @result = {}
     end
 
     def start
-      result = {}
       File.open(@file_name).each_byte do |byte|
         load_vars(byte)
         str = case @prefix
@@ -46,14 +46,16 @@ module Z80Disassembler
               else command
               end
         @prev = byte.to_s(16)
+        @ascii << ((32..126).include?(byte) ? ascii[byte - 32] : '.')
         @bytes << @prev.rjust(2, '0')
         next unless str
 
-        result[@addr] = ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' ')]
+        @result[@addr] = ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' '), @ascii]
         @addr += @bytes.size
         @bytes = []
+        @ascii = []
       end
-      result
+      @result
     end
 
     private
@@ -193,5 +195,16 @@ module Z80Disassembler
         'NOP'
       end
     end
+  end
+
+  def ascii
+    [
+      ' ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/',
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?',
+      '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+      'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\',']', '^', '_',
+      '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+      'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~'
+    ]
   end
 end
