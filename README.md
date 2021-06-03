@@ -27,7 +27,7 @@ Or install it yourself as:
 
 - example: parse.C >> parse.C.txt and compare with parse.txt
 ```ruby
-::Z80Disassembler::Disassembler.new('test/parse.C').start
+Z80Disassembler::Disassembler.new(params[:file], params[:org]).start
 ```
 
 ## Development

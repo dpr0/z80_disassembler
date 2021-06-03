@@ -35,7 +35,7 @@ PLATFORMS
 DEPENDENCIES
   minitest (~> 5.0)
   rake (~> 13.0)
-  rubocop (~> 1.7)
+  rubocop (~> 1.16)
   z80_disassembler!
 
 BUNDLED WITH

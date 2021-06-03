@@ -15,35 +15,32 @@ module Z80Disassembler
     T_RP  = [   'BC',   'DE',   'HL',   'SP'].freeze
     T_RP2 = [   'BC',   'DE',   'HL',   'AF'].freeze
 
-    def initialize(file_name, addr = 32768)
+    def initialize(file_name, addr = 32_768)
       @file_name = file_name; @addr = addr.to_i
       @x = 0; @y = 0; @z = 0; @p = 0; @q = 0; @xx = nil
-      @lyambda = nil; @prefix = nil; @prev = nil, @bytes = []
+      @lambda = nil; @prefix = nil; @prev = nil, @bytes = []
     end
 
     def start
-      result = []
+      result = {}
       File.open(@file_name).each_byte do |byte|
         load_vars(byte)
         str = case @prefix
-              when 'cb' then cb_prefix
-              when 'ed' then ed_prefix
+              when 'cb' then @prefix = nil; cb_prefix
+              when 'ed' then @prefix = nil; ed_prefix
               when 'dd' then @xx = 'IX'; xx_prefix(byte)
               when 'fd' then @xx = 'IY'; xx_prefix(byte)
               when 'xx' then temp = @temp; @temp = nil; displacement(byte, temp)
               when 2    then @prefix -= 1; @temp = byte.to_s(16).rjust(2, '0').upcase; nil
               when 1
-                resp = @lyambda.call(@arg, byte.to_s(16).rjust(2, '0').upcase)
-                @prefix = nil
-                temp = @temp; @temp = nil
-                if temp
-                  if resp.include?(')')
-                    resp = @xx ? displacement(temp.hex, resp) : resp.sub(')', "#{temp})").sub('(', '(#')
-                  else
-                    resp += temp
-                  end
+                resp = @lambda.call(@arg, byte.to_s(16).rjust(2, '0').upcase)
+                @prefix = nil; temp = @temp; @temp = nil
+                if temp && resp.include?(')')
+                  resp = @xx ? displacement(temp.hex, resp) : resp.sub(')', "#{temp})").sub('(', '(#')
+                elsif temp
+                  resp += temp
                 end
-                resp = @xx.nil? ? resp : resp.sub('HL', @xx)
+                resp = hl_to_xx(resp, @xx) unless @xx.nil?
                 @xx = nil
                 resp
               else command
@@ -52,7 +49,7 @@ module Z80Disassembler
         @bytes << @prev.rjust(2, '0')
         next unless str
 
-        result << ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' ')]
+        result[@addr] = ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' ')]
         @addr += @bytes.size
         @bytes = []
       end
@@ -61,6 +58,20 @@ module Z80Disassembler
     end
 
     private
+
+    def hl_to_xx(temp, reg)
+      if temp.include?('HL')
+        temp.sub('HL', reg)
+      elsif temp.include?(' L')
+        temp.sub(' L', " #{reg}L")
+      elsif temp.include?(',L')
+        temp.sub(',L', ",#{reg}L")
+      elsif temp.include?(' H')
+        temp.sub(' H', " #{reg}H")
+      elsif temp.include?(',H')
+        temp.sub(',H', ",#{reg}H")
+      end
+    end
 
     def displacement(byte, temp)
       @prefix = nil
@@ -141,8 +152,8 @@ module Z80Disassembler
       end
     end
 
-    def calc_bytes(lyambda, arg, prefix)
-      @lyambda, @arg, @prefix = lyambda, arg, prefix; nil
+    def calc_bytes(lambda, arg, prefix)
+      @lambda, @arg, @prefix = lambda, arg, prefix; nil
     end
 
     def xx_prefix(_byte) # dd fd prefix
@@ -151,25 +162,19 @@ module Z80Disassembler
         @prefix = 'xx'; nil
       elsif ['dd', 'fd'].include?(@prev) && @temp
         temp = @temp; @temp = nil; @prefix = nil; xx = @xx; @xx = nil
-        if temp.include?('HL')
-          temp.sub('HL', xx)
-        elsif temp.include?(' L') || temp.include?(',L')
-          temp.sub('L', "#{xx}L")
-        elsif temp.include?(' H') || temp.include?(',H')
-          temp.sub('H', "#{xx}H")
-        end
+        hl_to_xx(temp, xx)
+      elsif @lambda && !@arg.include?('HL')
+        @prefix = 1; @temp
       else
         @prefix = 2; @temp
       end
     end
 
     def cb_prefix
-      @prefix = nil
       ["#{T_ROT[@y]} ", "BIT #{@y},", "RES #{@y},", "SET #{@y},"][@x] + T_R[@z]
     end
 
     def ed_prefix
-      @prefix = nil
       if @x == 1
         case @z
         when 0 then "IN #{"#{T_R[@y]}," if @y != 6}(C)"
