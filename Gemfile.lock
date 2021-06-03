@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    z80_disassembler (0.1.5)
+    z80_disassembler (0.2.0)
 
 GEM
   remote: https://rubygems.org/

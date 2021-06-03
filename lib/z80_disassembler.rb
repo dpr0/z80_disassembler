@@ -15,6 +15,15 @@ module Z80Disassembler
     T_RP  = [   'BC',   'DE',   'HL',   'SP'].freeze
     T_RP2 = [   'BC',   'DE',   'HL',   'AF'].freeze
 
+    ASCII = [
+      ' ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/',
+      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?',
+      '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
+      'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\',']', '^', '_',
+      '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
+      'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~'
+    ].freeze
+
     def initialize(file_name, addr = 32_768)
       @file_name = file_name; @addr = addr.to_i
       @x = 0; @y = 0; @z = 0; @p = 0; @q = 0; @xx = nil
@@ -46,11 +55,11 @@ module Z80Disassembler
               else command
               end
         @prev = byte.to_s(16)
-        @ascii << ((32..126).include?(byte) ? ascii[byte - 32] : '.')
-        @bytes << @prev.rjust(2, '0')
+        @ascii << ((32..126).include?(byte) ? ASCII[byte - 32] : '_')
+        @bytes << @prev.rjust(2, '0').upcase
         next unless str
 
-        @result[@addr] = ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' '), @ascii]
+        @result[@addr] = ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' '), @ascii.join]
         @addr += @bytes.size
         @bytes = []
         @ascii = []
@@ -195,16 +204,5 @@ module Z80Disassembler
         'NOP'
       end
     end
-  end
-
-  def ascii
-    [
-      ' ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/',
-      '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?',
-      '@', 'A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O',
-      'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z', '[', '\\',']', '^', '_',
-      '`', 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o',
-      'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~'
-    ]
   end
 end
