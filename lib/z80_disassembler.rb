@@ -175,7 +175,7 @@ module Z80Disassembler
       elsif ['dd', 'fd'].include?(@prev) && @temp
         temp = @temp; @temp = nil; @prefix = nil; xx = @xx; @xx = nil
         hl_to_xx(temp, xx)
-      elsif @lambda && !@arg.include?('HL')
+      elsif @lambda && !@arg&.include?('HL')
         @prefix = 1; @temp
       else
         @prefix = 2; @temp
