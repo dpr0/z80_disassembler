@@ -28,38 +28,19 @@ module Z80Disassembler
       @file_name = file_name; @addr = addr.to_i
       @x = 0; @y = 0; @z = 0; @p = 0; @q = 0; @xx = nil
       @lambda = nil; @prefix = nil; @prev = nil
-      @bytes = []; @ascii = []; @result = {}
+      @bytes = []; @ascii = []; @result = []
     end
 
     def start
       File.open(@file_name).each_byte do |byte|
         load_vars(byte)
-        str = case @prefix
-              when 'cb' then @prefix = nil; cb_prefix
-              when 'ed' then @prefix = nil; ed_prefix
-              when 'dd' then @xx = 'IX'; xx_prefix(byte)
-              when 'fd' then @xx = 'IY'; xx_prefix(byte)
-              when 'xx' then temp = @temp; @temp = nil; displacement(byte, temp)
-              when 2    then @prefix -= 1; @temp = byte.to_s(16).rjust(2, '0').upcase; nil
-              when 1
-                resp = @lambda.call(@arg, byte.to_s(16).rjust(2, '0').upcase)
-                @prefix = nil; temp = @temp; @temp = nil
-                if temp && resp.include?(')')
-                  resp = @xx ? displacement(temp.hex, resp) : resp.sub(')', "#{temp})").sub('(', '(#')
-                elsif temp
-                  resp += temp
-                end
-                resp = hl_to_xx(resp, @xx) unless @xx.nil?
-                @xx = nil
-                resp
-              else command
-              end
+        str = command_from_byte(byte)
         @prev = byte.to_s(16)
-        @ascii << ((32..126).include?(byte) ? ASCII[byte - 32] : '_')
+        @ascii << ((32..126).include?(byte) ? ASCII[byte - 32] : ' ')
         @bytes << @prev.rjust(2, '0').upcase
         next unless str
 
-        @result[@addr] = ["##{@addr.to_s(16)}".upcase, str, @bytes.join(' '), @ascii.join]
+        @result << [@addr, "##{@addr.to_s(16)}".upcase, str, @bytes.join(' '), @ascii.join]
         @addr += @bytes.size
         @bytes = []
         @ascii = []
@@ -67,7 +48,50 @@ module Z80Disassembler
       @result
     end
 
+    def text
+      org = @addr - @file_name.size
+      hash_links = {}
+      link_num = 0
+      int_addrs = org..@addr
+      with_links = @result.select { |z| z[2] =~ /#[0-F]{4}/ && int_addrs.include?(z[2].split('#').last[0..3].hex) }
+      with_links.each { |x| hash_links["##{x[2].split('#').last[0..3]}"] = "link_#{link_num += 1}" }
+      [
+        "                 device zxspectrum48",
+        "                 ORG #{org}",
+        "begin_file:\n"
+      ].join("\n") +
+        @result.map do |addr, addr16, str, bytes, ascii|
+          link = (hash_links[addr16] || '').ljust(16, ' ')
+          adr = '#' + str.split('#').last[0..3]
+          string = hash_links.keys.include?(adr) ? str.sub(adr, hash_links[adr]) : str
+          "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr.to_s.ljust(5, ' ')} ; #{bytes.ljust(14, ' ')} ; #{ascii.ljust(4, ' ')} ;"
+        end.join("\n")
+    end
+
     private
+
+    def command_from_byte(byte)
+      case @prefix
+      when 'cb' then @prefix = nil; cb_prefix
+      when 'ed' then @prefix = nil; ed_prefix
+      when 'dd' then @xx = 'IX'; xx_prefix(byte)
+      when 'fd' then @xx = 'IY'; xx_prefix(byte)
+      when 'xx' then temp = @temp; @temp = nil; displacement(byte, temp)
+      when 2    then @prefix -= 1; @temp = byte.to_s(16).rjust(2, '0').upcase; nil
+      when 1
+        resp = @lambda.call(@arg, byte.to_s(16).rjust(2, '0').upcase)
+        @prefix = nil; temp = @temp; @temp = nil
+        if temp && resp.include?(')')
+          resp = @xx ? displacement(temp.hex, resp) : resp.sub(')', "#{temp})").sub('(', '(#')
+        elsif temp
+          resp += temp
+        end
+        resp = hl_to_xx(resp, @xx) unless @xx.nil?
+        @xx = nil
+        resp
+      else command
+      end
+    end
 
     def hl_to_xx(temp, reg)
       if temp.include?('HL')
