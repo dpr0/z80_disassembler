@@ -27,10 +27,10 @@ Or install it yourself as:
 
 - example: parse.C >> parse.C.txt and compare with parse.txt
 ```ruby
-Z80Disassembler::Disassembler.new(params[:file], 32768).start
+z = Z80Disassembler::Disassembler.new(params[:file], 32768)
+z.start # return [25114, "#621A", "LD IX,#6300", "DD 21 00 63", " ! c"
+z.text # return asm text "            LD IX,link_1    ; #621A / 25114 ; DD 21 00 63    ;  ! c ;"
 ```
-return hash { 32768=>["#8000", "PUSH IY", "fd e5"], 32770=>[...], ... }
-
 ## Development
 
 After checking out the repo, run `bin/setup` to install dependencies. Then, run `rake test` to run the tests. You can also run `bin/console` for an interactive prompt that will allow you to experiment.
