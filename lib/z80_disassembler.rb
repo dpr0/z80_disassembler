@@ -6,6 +6,8 @@ module Z80Disassembler
   class Error < StandardError; end
 
   class Disassembler
+    attr_reader :org
+
     #             0       1       2       3       4       5       6       7
     T_R   = [    'B',    'C',    'D',    'E',    'H',    'L', '(HL)',    'A'].freeze
     T_CC  = [   'NZ',    'Z',   'NC',    'C',   'PO',   'PE',    'P',    'M'].freeze
@@ -14,7 +16,6 @@ module Z80Disassembler
     T_IM  = [    '0',  '0/1',    '1',    '2',    '0',  '0/1',    '1',    '2'].freeze
     T_RP  = [   'BC',   'DE',   'HL',   'SP'].freeze
     T_RP2 = [   'BC',   'DE',   'HL',   'AF'].freeze
-
     ASCII = [
       ' ', '!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/',
       '0', '1', '2', '3', '4', '5', '6', '7', '8', '9', ':', ';', '<', '=', '>', '?',
@@ -24,51 +25,82 @@ module Z80Disassembler
       'p', 'q', 'r', 's', 't', 'u', 'v', 'w', 'x', 'y', 'z', '{', '|', '}', '~'
     ].freeze
 
-    def initialize(file_name, addr = 32_768)
-      @file_name = file_name; @addr = addr.to_i
+    def initialize(file, org = 32_768)
+      @file = file; @org = org.to_i
+      if file.original_filename[-3..-1] == '.$C'
+        File.open(@file) do |f|
+          z = f.read(17)
+          @file_name   = "#{z[0..7]}.#{z[8]}"
+          @org         = bytes_to_int(z[ 9..10])
+          @file_size   = bytes_to_int(z[11..12])
+          @sectors     = bytes_to_int(z[13..14])
+          checksum1    = bytes_to_int(z[15..16])
+          checksum2    = (z[0..14].sum * 257 + 105).to_s(16)[-4..-1].hex
+          @code        = f.read(@file_size).bytes if checksum1 == checksum2
+        end
+      end
+      @code ||= File.open(@file).read.bytes
+      @file_size ||= @file.size
       @x = 0; @y = 0; @z = 0; @p = 0; @q = 0; @xx = nil
-      @lambda = nil; @prefix = nil; @prev = nil
-      @bytes = []; @ascii = []; @result = []
+      @lambda = nil; @prefix = nil; @prev = nil; @result = []
     end
 
     def start
-      File.open(@file_name).each_byte do |byte|
+      addr = @org
+      bytes = []; ascii = []
+      @code.each do |byte|
         load_vars(byte)
         str = command_from_byte(byte)
         @prev = byte.to_s(16)
-        @ascii << ((32..126).include?(byte) ? ASCII[byte - 32] : ' ')
-        @bytes << @prev.rjust(2, '0').upcase
+        ascii << ((32..126).include?(byte) ? ASCII[byte - 32] : ' ')
+        bytes << @prev.rjust(2, '0').upcase
         next unless str
 
-        @result << [@addr, "##{@addr.to_s(16)}".upcase, str, @bytes.join(' '), @ascii.join]
-        @addr += @bytes.size
-        @bytes = []
-        @ascii = []
+        @result << [addr, "##{addr.to_s(16)}".upcase, str, bytes.join(' '), ascii.join]
+        addr += bytes.size
+        bytes = []
+        ascii = []
       end
       @result
     end
 
     def text
-      org = @addr - @file_name.size
       hash_links = {}
+      del_links = []
       link_num = 0
-      int_addrs = org..@addr
+      int_addrs = @org..(@org + @file_size)
       with_links = @result.select { |z| z[2] =~ /#[0-F]{4}/ && int_addrs.include?(z[2].split('#').last[0..3].hex) }
-      with_links.each { |x| hash_links["##{x[2].split('#').last[0..3]}"] = "link_#{link_num += 1}" }
+      with_links.each do |x|
+        z = "##{x[2].split('#').last[0..3]}"
+        hash_links[z] = "link_#{link_num += 1}" unless hash_links[z]
+      end
+
+      code = @result.map do |addr, addr16, str, bytes, ascii|
+        del_links << hash_links[addr16] if hash_links[addr16]
+        link = (hash_links[addr16] || '').ljust(16, ' ')
+        adr = '#' + str.split('#').last[0..3]
+        string = hash_links.keys.include?(adr) ? str.sub(adr, hash_links[adr]) : str
+        "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr.to_s.ljust(5, ' ')} ; #{bytes.ljust(14, ' ')} ; #{ascii.ljust(4, ' ')} ;"
+      end.join("\n")
+
       [
-        "                 device zxspectrum48",
-        "                 ORG #{org}",
-        "begin_file:\n"
-      ].join("\n") +
-        @result.map do |addr, addr16, str, bytes, ascii|
-          link = (hash_links[addr16] || '').ljust(16, ' ')
-          adr = '#' + str.split('#').last[0..3]
-          string = hash_links.keys.include?(adr) ? str.sub(adr, hash_links[adr]) : str
-          "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr.to_s.ljust(5, ' ')} ; #{bytes.ljust(14, ' ')} ; #{ascii.ljust(4, ' ')} ;"
-        end.join("\n")
+        '                 device zxspectrum48',
+        '                 ORG #' + @org.to_s(16),
+        hash_links.map { |key, val| "#{val.ljust(16, ' ')} equ #{key}" unless del_links.include?(val) }.compact.join("\n"),
+        'begin:',
+        code,
+        'end:',
+        '        savesna "disasm.sna", begin',
+        '        savebin "disasm.C", begin, end - begin',
+        ''
+      ].join("\n")
     end
 
     private
+
+    def bytes_to_int(array)
+      array.bytes.reverse.map { |x| x.to_s(16).rjust(2, "0") }.join.hex
+    end
 
     def command_from_byte(byte)
       case @prefix
@@ -88,6 +120,11 @@ module Z80Disassembler
         end
         resp = hl_to_xx(resp, @xx) unless @xx.nil?
         @xx = nil
+        if resp.include?('JR') || resp.include?('DJNZ')
+          z = resp.split('#')
+          z[1] = z[1].hex < 127 ? "$+#{z[1].hex}" : "$-#{255 - z[1].hex}"
+          resp = z.join
+        end
         resp
       else command
       end
@@ -133,8 +170,8 @@ module Z80Disassembler
           case @y
           when 0 then 'NOP'
           when 1 then 'EX AF, AF\''
-          when 2 then calc_bytes(->(a, b){ "DJNZ ##{b}" },    nil,          1)
-          when 3 then calc_bytes(->(a, b){ "JR ##{b}" },      nil,          1)
+          when 2 then calc_bytes(->(a, b){ "DJNZ ##{b}"    }, nil,          1)
+          when 3 then calc_bytes(->(a, b){ "JR ##{b}"      }, nil,          1)
           else        calc_bytes(->(a, b){ "JR #{a},##{b}" }, T_CC[@y - 4], 1)
           end
         when 1 then @q ? "ADD HL,#{T_RP[@p]}" : calc_bytes(->(a, b){ "LD #{a},##{b}" }, T_RP[@p], 2)

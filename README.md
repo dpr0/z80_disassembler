@@ -28,8 +28,8 @@ Or install it yourself as:
 - example: parse.C >> parse.C.txt and compare with parse.txt
 ```ruby
 z = Z80Disassembler::Disassembler.new(params[:file], 32768)
-z.start # return [25114, "#621A", "LD IX,#6300", "DD 21 00 63", " ! c"
-z.text # return asm text "            LD IX,link_1    ; #621A / 25114 ; DD 21 00 63    ;  ! c ;"
+z.start # return [ [25114, "#621A", "LD IX,#6300", "DD 21 00 63", " ! c"], [...], ... ]
+z.text # return "            LD IX,link_1    ; #621A / 25114 ; DD 21 00 63    ;  ! c ;\n"
 ```
 ## Development
 
