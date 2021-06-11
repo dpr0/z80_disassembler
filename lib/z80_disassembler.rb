@@ -69,21 +69,39 @@ module Z80Disassembler
       del_links = []
       link_num = 0
       int_addrs = @org..(@org + @file_size)
-      with_links = @result.select { |z| z[2] =~ /#[0-F]{4}/ && int_addrs.include?(z[2].split('#').last[0..3].hex) }
-      with_links.each do |x|
+      @result.select { |z| z[2] =~ /#[0-F]{4}/ && int_addrs.include?(z[2].split('#').last[0..3].hex) }.each do |x|
         z = "##{x[2].split('#').last[0..3]}"
         hash_links[z] = "link_#{link_num += 1}" unless hash_links[z]
       end
-
+      @result.select { |z| z[2] =~ /\$/ }.each do |x|
+        z = "##{ (x[0] + x[2].split('$').last.to_i).to_s(16).upcase }"
+        hash_links[z] = "link_#{link_num += 1}" unless hash_links[z]
+      end
       code = @result.map do |addr, addr16, str, bytes, ascii|
         del_links << hash_links[addr16] if hash_links[addr16]
-        link = (hash_links[addr16] || '').ljust(16, ' ')
-        adr = '#' + str.split('#').last[0..3]
-        string = hash_links.keys.include?(adr) ? str.sub(adr, hash_links[adr]) : str
+        link = (hash_links[addr16] ? (hash_links[addr16] + ':') : '').ljust(16, ' ')
+        substr, adr = if str.include?('$')
+                        ["$#{str.split('$').last}", "##{(addr + str.split('$').last.to_i).to_s(16).upcase}"]
+                      else
+                        adr = "##{str.split('#').last[0..3]}"
+                        [adr, adr]
+                      end
+        string = hash_links.keys.include?(adr) ? str.sub(substr, hash_links[adr]) : str
+
         "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr.to_s.ljust(5, ' ')} ; #{bytes.ljust(14, ' ')} ; #{ascii.ljust(4, ' ')} ;"
       end.join("\n")
 
+      header = [
+        ";--- #{Date.today} --- https://rmda.su ",
+        ';    _______  _/| __ ______    ____ ',
+        ';   /  __   //  |/  \\\\   _  \ /    \ ',
+        ';  /   _/ _//        \\\\  \\\\  \\\\  \  \ ',
+        ';  \___\   \\\\___\/___//______//__/\__\ ',
+        ';       \__/ ',
+        ";--- size: #{@file_size} --- filename: #{@file_name} "
+      ]
       [
+        *header,
         '                 device zxspectrum48',
         '                 ORG #' + @org.to_s(16),
         hash_links.map { |key, val| "#{val.ljust(16, ' ')} equ #{key}" unless del_links.include?(val) }.compact.join("\n"),
@@ -122,7 +140,7 @@ module Z80Disassembler
         @xx = nil
         if resp.include?('JR') || resp.include?('DJNZ')
           z = resp.split('#')
-          z[1] = z[1].hex < 127 ? "$+#{z[1].hex}" : "$-#{255 - z[1].hex}"
+          z[1] = z[1].hex < 127 ? "$+#{z[1].hex + 2}" : "$-#{255 - z[1].hex - 1}"
           resp = z.join
         end
         resp
