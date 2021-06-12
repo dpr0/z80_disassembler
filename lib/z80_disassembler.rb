@@ -26,7 +26,7 @@ module Z80Disassembler
     ].freeze
 
     def initialize(file, org = 32_768)
-      @file = file; @org = org.to_i
+      @file = file; @org = 25108 # org.to_i
       if file.original_filename[-3..-1] == '.$C'
         File.open(@file) do |f|
           z = f.read(17)
@@ -131,13 +131,15 @@ module Z80Disassembler
       when 1
         resp = @lambda.call(@arg, byte.to_s(16).rjust(2, '0').upcase)
         @prefix = nil; temp = @temp; @temp = nil
-        if temp && resp.include?(')')
-          resp = @xx ? displacement(temp.hex, resp) : resp.sub(')', "#{temp})").sub('(', '(#')
+        if temp && resp.include?('(HL)')
+          resp += temp
+        elsif temp && resp.include?(')')
+          # resp = @xx ? displacement(temp.hex, resp) :
+          resp = resp.sub(')', "#{temp})").sub('(', '(#')
         elsif temp
           resp += temp
         end
         resp = hl_to_xx(resp, @xx) unless @xx.nil?
-        @xx = nil
         if resp.include?('JR') || resp.include?('DJNZ')
           z = resp.split('#')
           z[1] = z[1].hex < 127 ? "$+#{z[1].hex + 2}" : "$-#{255 - z[1].hex - 1}"
@@ -149,6 +151,7 @@ module Z80Disassembler
     end
 
     def hl_to_xx(temp, reg)
+      @xx = nil
       if temp.include?('HL')
         temp.sub('HL', reg)
       elsif temp.include?(' L')
@@ -167,7 +170,7 @@ module Z80Disassembler
     def displacement(byte, temp)
       @prefix = nil
       byte -= 256 if byte > 127
-      des = ['', "+#{byte.to_s(16)}", byte.to_s(16)][byte <=> 0]
+      des = ['', "+#{byte.to_s}", byte.to_s][byte <=> 0]
       temp.sub('HL', @xx + des)
     end
 
@@ -252,8 +255,8 @@ module Z80Disassembler
       if @temp&.include?('(')
         @prefix = 'xx'; nil
       elsif ['dd', 'fd'].include?(@prev) && @temp
-        temp = @temp; @temp = nil; @prefix = nil; xx = @xx; @xx = nil
-        hl_to_xx(temp, xx)
+        temp = @temp; @temp = nil; @prefix = nil
+        hl_to_xx(temp, @xx)
       elsif @lambda && !@arg&.include?('HL')
         @prefix = 1; @temp
       else
