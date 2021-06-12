@@ -26,7 +26,7 @@ module Z80Disassembler
     ].freeze
 
     def initialize(file, org = 32_768)
-      @file = file; @org = 25108 # org.to_i
+      @file = file; @org = org.to_i
       if file.original_filename[-3..-1] == '.$C'
         File.open(@file) do |f|
           z = f.read(17)
