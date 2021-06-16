@@ -132,9 +132,9 @@ module Z80Disassembler
         resp = @lambda.call(@arg, byte.to_s(16).rjust(2, '0').upcase)
         @prefix = nil; temp = @temp; @temp = nil
         if temp && resp.include?('(HL)')
-          resp += temp
+          @xx ? resp = displacement(temp.hex, resp) : resp += temp
         elsif temp && resp.include?(')')
-          # resp = @xx ? displacement(temp.hex, resp) :
+          # resp = displacement(temp.hex, resp) if @xx
           resp = resp.sub(')', "#{temp})").sub('(', '(#')
         elsif temp
           resp += temp
@@ -170,7 +170,7 @@ module Z80Disassembler
     def displacement(byte, temp)
       @prefix = nil
       byte -= 256 if byte > 127
-      des = ['', "+#{byte.to_s}", byte.to_s][byte <=> 0]
+      des = ['+0', "+#{byte}", byte.to_s][byte <=> 0]
       temp.sub('HL', @xx + des)
     end
 
@@ -216,7 +216,7 @@ module Z80Disassembler
         case @z
         when 0 then "RET #{T_CC[@y]}"
         when 1 then @q ? ['RET','EXX','JP HL','LD SP, HL'][@p] : "POP #{T_RP2[@p]}"
-        when 2 then calc_bytes(->(a, b){ "JP #{a},#{b}" }, T_CC[@y], 2)
+        when 2 then calc_bytes(->(a, b){ "JP #{a},##{b}" }, T_CC[@y], 2)
         when 3
           case @y
           when 0 then calc_bytes(->(a, b){ "JP ##{b}" }, nil, 2)
