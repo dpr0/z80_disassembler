@@ -6,7 +6,7 @@ module Z80Disassembler
   class Error < StandardError; end
 
   class Disassembler
-    attr_reader :org
+    attr_reader :org, :file_size
 
     #             0       1       2       3       4       5       6       7
     T_R   = [    'B',    'C',    'D',    'E',    'H',    'L', '(HL)',    'A'].freeze
@@ -108,8 +108,36 @@ module Z80Disassembler
         'begin:',
         code,
         'end:',
+        'length equ end - begin',
+        'CODE      = #AF',
+        'USR       = #C0',
+        'LOAD      = #EF',
+        'CLEAR     = #FD',
+        'RANDOMIZE = #F9',
+        '        org #5C00',
+        '        baszac db 0, 1', # Line number
+        '        dw linlen',      # Line length
+        '        linzac',
+        '        db CLEAR, "8", #0E, 0, 0',
+        '        dw begin - 1',
+        '        db 0, ":"',
+        '        db LOAD, "\""',
+        '        codnam ds 10, 32',
+        '        org codnam',
+        '        db "disasm"',
+        '        org codnam + 10',
+        '        db "\"", CODE, ":"',
+        '        db RANDOMIZE, USR, "8", #0E, 0, 0',
+        '        dw begin',       # call address
+        '        db 0, #0D',
+        '        linlen = $ - linzac',
+        '        baslen = $ - baszac',
+        '        emptytap "disasm.tap"',
+        '        savetap "disasm.tap", BASIC, "disasm", baszac, baslen, 1',
+        '        savetap "disasm.tap", CODE,  "disasm", begin,  length, begin',
         '        savesna "disasm.sna", begin',
-        '        savebin "disasm.C", begin, end - begin',
+        '        savebin "disasm.C",   begin, length',
+        '        savehob "disasm.$C", "disasm.C", begin, length',
         ''
       ].join("\n")
     end
