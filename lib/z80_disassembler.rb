@@ -115,14 +115,14 @@ module Z80Disassembler
         'CLEAR     = #FD',
         'RANDOMIZE = #F9',
         '        org #5C00',
-        '        baszac db 0, 1', # Line number
+        'baszac db 0, 1', # Line number
         '        dw linlen',      # Line length
-        '        linzac',
+        'linzac',
         '        db CLEAR, "8", #0E, 0, 0',
         '        dw begin - 1',
         '        db 0, ":"',
         '        db LOAD, "\""',
-        '        codnam ds 10, 32',
+        'codnam ds 10, 32',
         '        org codnam',
         '        db "disasm"',
         '        org codnam + 10',
@@ -130,8 +130,8 @@ module Z80Disassembler
         '        db RANDOMIZE, USR, "8", #0E, 0, 0',
         '        dw begin',       # call address
         '        db 0, #0D',
-        '        linlen = $ - linzac',
-        '        baslen = $ - baszac',
+        'linlen = $ - linzac',
+        'baslen = $ - baszac',
         '        emptytap "disasm.tap"',
         '        savetap "disasm.tap", BASIC, "disasm", baszac, baslen, 1',
         '        savetap "disasm.tap", CODE,  "disasm", begin,  length, begin',
