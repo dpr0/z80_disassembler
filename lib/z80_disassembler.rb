@@ -88,7 +88,8 @@ module Z80Disassembler
                       end
         string = hash_links.keys.include?(adr) ? str.sub(substr, hash_links[adr]) : str
 
-        "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr.to_s.ljust(5, ' ')} ; #{bytes.ljust(14, ' ')} ; #{ascii.ljust(4, ' ')} ;"
+        defb = bytes.split(" ").map { |x| "##{x}"}.join(",")
+        "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr.to_s.ljust(5, ' ')} ; #{ascii.ljust(4, ' ')} ; #{defb}"
       end.join("\n")
 
       header = [
