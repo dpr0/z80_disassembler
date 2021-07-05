@@ -152,7 +152,7 @@ module Z80Disassembler
     def command_from_byte(byte)
       case @prefix
       when 'cb' then @prefix = nil; cb_prefix
-      when 'ed' then @prefix = nil; ed_prefix
+      when 'ed' then @prefix = nil; ed_prefix(byte)
       when 'dd' then @xx = 'IX'; xx_prefix(byte)
       when 'fd' then @xx = 'IY'; xx_prefix(byte)
       when 'xx' then temp = @temp; @temp = nil; displacement(byte, temp)
@@ -297,7 +297,7 @@ module Z80Disassembler
       ["#{T_ROT[@y]} ", "BIT #{@y},", "RES #{@y},", "SET #{@y},"][@x] + T_R[@z]
     end
 
-    def ed_prefix
+    def ed_prefix(byte)
       if @x == 1
         case @z
         when 0 then "IN #{"#{T_R[@y]}," if @y != 6}(C)"
@@ -312,7 +312,7 @@ module Z80Disassembler
       elsif @x == 2 && @z <= 3 && @y >= 4
         [['LDI','CPI','INI','OUTI'],['LDD','CPD','IND','OUTD'],['LDIR','CPIR','INIR','OTIR'],['LDDR','CPDR','INDR','OTDR']][@y - 4][@z]
       else
-        'NOP'
+        "#{'DB #ED'}, ##{byte.to_s(16).rjust(2, '0').upcase}"
       end
     end
   end
