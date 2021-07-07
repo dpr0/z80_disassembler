@@ -6,7 +6,7 @@ module Z80Disassembler
   class Error < StandardError; end
 
   class Disassembler
-    attr_reader :org, :file_size
+    attr_reader :org, :file_size, :rmda
 
     #             0       1       2       3       4       5       6       7
     T_R   = [    'B',    'C',    'D',    'E',    'H',    'L', '(HL)',    'A'].freeze
@@ -42,10 +42,22 @@ module Z80Disassembler
       @code ||= File.open(@file).read.bytes
       @file_size ||= @file.size
       @x = 0; @y = 0; @z = 0; @p = 0; @q = 0; @xx = nil
-      @lambda = nil; @prefix = nil; @prev = nil; @result = []
+      @lambda = nil; @prefix = nil; @prev = nil
+      @hash_links = {}; @del_links = []
+      @rmda = """
+        ;--- #{Date.today} --- https://rmda.su
+        ;    _______  _/| __ ______    ____
+        ;   /  __   //  |/  \\\\   _  \\ /    \\
+        ;  /   _/ _//        \\\\  \\\\  \\\\  \\  \\
+        ;  \\___\\   \\\\___\\/___//______//__/\\__\\
+        ;       \\__/
+        ;--- size: #{@file_size}b --- filename: #{@file_name}
+
+      """
     end
 
     def start
+      result = []
       addr = @org
       bytes = []; ascii = []
       @code.each do |byte|
@@ -56,59 +68,50 @@ module Z80Disassembler
         bytes << @prev.rjust(2, '0').upcase
         next unless str
 
-        @result << [addr, "##{addr.to_s(16)}".upcase, str, bytes.join(' '), ascii.join]
+        result << [addr, "##{addr.to_s(16)}".upcase, str, bytes.join(' '), ascii.join]
         addr += bytes.size
         bytes = []
         ascii = []
       end
-      @result
-    end
 
-    def text
-      hash_links = {}
-      del_links = []
       link_num = 0
       int_addrs = @org..(@org + @file_size)
-      @result.select { |z| z[2] =~ /#[0-F]{4}/ && int_addrs.include?(z[2].split('#').last[0..3].hex) }.each do |x|
+      result.select { |z| z[2] =~ /#[0-F]{4}/ && int_addrs.include?(z[2].split('#').last[0..3].hex) }.each do |x|
         z = "##{x[2].split('#').last[0..3]}"
-        hash_links[z] = "link_#{link_num += 1}" unless hash_links[z]
+        @hash_links[z] = "link_#{link_num += 1}" unless @hash_links[z]
       end
-      @result.select { |z| z[2] =~ /\$/ }.each do |x|
+      result.select { |z| z[2] =~ /\$/ }.each do |x|
         z = "##{ (x[0] + x[2].split('$').last.to_i).to_s(16).upcase }"
-        hash_links[z] = "link_#{link_num += 1}" unless hash_links[z]
+        @hash_links[z] = "link_#{link_num += 1}" unless @hash_links[z]
       end
-      code = @result.map do |addr, addr16, str, bytes, ascii|
-        del_links << hash_links[addr16] if hash_links[addr16]
-        link = (hash_links[addr16] ? (hash_links[addr16] + ':') : '').ljust(16, ' ')
+      code = result.map do |addr_, addr16, str, bytes_, ascii_|
+        @del_links << @hash_links[addr16] if @hash_links[addr16]
+        link = (@hash_links[addr16] ? (@hash_links[addr16] + ':') : '').ljust(16, ' ')
         substr, adr = if str.include?('$')
-                        ["$#{str.split('$').last}", "##{(addr + str.split('$').last.to_i).to_s(16).upcase}"]
+                        ["$#{str.split('$').last}", "##{(addr_ + str.split('$').last.to_i).to_s(16).upcase}"]
                       else
                         adr = "##{str.split('#').last[0..3]}"
                         [adr, adr]
                       end
-        string = hash_links.keys.include?(adr) ? str.sub(substr, hash_links[adr]) : str
+        string = @hash_links.keys.include?(adr) ? str.sub(substr, @hash_links[adr]) : str
 
-        defb = bytes.split(" ").map { |x| "##{x}"}.join(",")
-        "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr.to_s.ljust(5, ' ')} ; #{ascii.ljust(4, ' ')} ; #{defb}"
+        defb = bytes_.split(" ").map { |x| "##{x}"}.join(",")
+        "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr_.to_s.ljust(5, ' ')} ; #{ascii_.ljust(4, ' ')} ; #{defb}"
       end.join("\n")
-
-      header = [
-        ";--- #{Date.today} --- https://rmda.su ",
-        ';    _______  _/| __ ______    ____ ',
-        ';   /  __   //  |/  \\\\   _  \ /    \ ',
-        ';  /   _/ _//        \\\\  \\\\  \\\\  \  \ ',
-        ';  \___\   \\\\___\/___//______//__/\__\ ',
-        ';       \__/ ',
-        ";--- size: #{@file_size} --- filename: #{@file_name} "
-      ]
       [
-        *header,
-        '                 device zxspectrum48',
-        '                 ORG #' + @org.to_s(16),
-        hash_links.map { |key, val| "#{val.ljust(16, ' ')} equ #{key}" unless del_links.include?(val) }.compact.join("\n"),
-        'begin:',
-        code,
-        'end:',
+          *@rmda,
+          '                 device zxspectrum128',
+          '                 ORG #' + @org.to_s(16),
+          @hash_links.map { |key, val| "#{(val + ':').ljust(16, ' ')} EQU #{key}" unless @del_links.include?(val) }.compact.join("\n"),
+          'begin:',
+          code,
+          'end:',
+          ''
+      ].join("\n")
+    end
+
+    def self.compile_text(file_name)
+      [
         'length equ end - begin',
         'CODE      = #AF',
         'USR       = #C0',
@@ -116,29 +119,28 @@ module Z80Disassembler
         'CLEAR     = #FD',
         'RANDOMIZE = #F9',
         '        org #5C00',
-        'baszac db 0, 1', # Line number
-        '        dw linlen',      # Line length
-        'linzac',
-        '        db CLEAR, "8", #0E, 0, 0',
+        'baszac  db 0,1',    # Line number
+        '        dw linlen', # Line length
+        'linzac  db CLEAR, "8", #0E, 0, 0',
         '        dw begin - 1',
         '        db 0, ":"',
         '        db LOAD, "\""',
-        'codnam ds 10, 32',
+        'codnam  ds 10, 32',
         '        org codnam',
         '        db "disasm"',
         '        org codnam + 10',
         '        db "\"", CODE, ":"',
         '        db RANDOMIZE, USR, "8", #0E, 0, 0',
-        '        dw begin',       # call address
+        '        dw begin',  # call address
         '        db 0, #0D',
         'linlen = $ - linzac',
         'baslen = $ - baszac',
-        '        emptytap "disasm.tap"',
-        '        savetap "disasm.tap", BASIC, "disasm", baszac, baslen, 1',
-        '        savetap "disasm.tap", CODE,  "disasm", begin,  length, begin',
-        '        savesna "disasm.sna", begin',
-        '        savebin "disasm.C",   begin, length',
-        '        savehob "disasm.$C", "disasm.C", begin, length',
+        "        emptytap '#{file_name}.tap'",
+        "        savetap '#{file_name}.tap', BASIC, '#{file_name}', baszac, baslen, 1",
+        "        savetap '#{file_name}.tap', CODE,  '#{file_name}', begin,  length, begin",
+        "        savesna '#{file_name}.sna', begin",
+        "        savebin '#{file_name}.C',   begin, length",
+        "        savehob '#{file_name}.$C', '#{file_name}.C', begin, length",
         ''
       ].join("\n")
     end
@@ -146,7 +148,7 @@ module Z80Disassembler
     private
 
     def bytes_to_int(array)
-      array.bytes.reverse.map { |x| x.to_s(16).rjust(2, "0") }.join.hex
+      array.bytes.reverse.map { |x| x.to_s(16).rjust(2, '0') }.join.hex
     end
 
     def command_from_byte(byte)
