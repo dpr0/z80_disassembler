@@ -45,13 +45,13 @@ module Z80Disassembler
       @lambda = nil; @prefix = nil; @prev = nil
       @hash_links = {}; @del_links = []
       @rmda = """
-        ;--- #{Date.today} --- https://rmda.su
-        ;    _______  _/| __ ______    ____
-        ;   /  __   //  |/  \\\\   _  \\ /    \\
-        ;  /   _/ _//        \\\\  \\\\  \\\\  \\  \\
-        ;  \\___\\   \\\\___\\/___//______//__/\\__\\
-        ;       \\__/
-        ;--- size: #{@file_size}b --- filename: #{@file_name}
+;--- #{Date.today} --- https://rmda.su
+;    _______  _/| __ ______    ____
+;   /  __   //  |/  \\\\   _  \\ /    \\
+;  /   _/ _//        \\\\  \\\\  \\\\  \\  \\
+;  \\___\\   \\\\___\\/___//______//__/\\__\\
+;       \\__/
+;--- size: #{@file_size}b #{"--- filename: #{@file_name}" if @file_name}
 
       """
     end
@@ -99,7 +99,7 @@ module Z80Disassembler
         "#{link} #{string.ljust(16, ' ')}; #{addr16.ljust(5, ' ')} / #{addr_.to_s.ljust(5, ' ')} ; #{ascii_.ljust(4, ' ')} ; #{defb}"
       end.join("\n")
       [
-          *@rmda,
+          @rmda,
           '                 device zxspectrum128',
           '                 ORG #' + @org.to_s(16),
           @hash_links.map { |key, val| "#{(val + ':').ljust(16, ' ')} EQU #{key}" unless @del_links.include?(val) }.compact.join("\n"),
@@ -111,6 +111,7 @@ module Z80Disassembler
     end
 
     def self.compile_text(file_name)
+      name = file_name.split('/').last
       [
         'length equ end - begin',
         'CODE      = #AF',
@@ -136,11 +137,11 @@ module Z80Disassembler
         'linlen = $ - linzac',
         'baslen = $ - baszac',
         "        emptytap '#{file_name}.tap'",
-        "        savetap '#{file_name}.tap', BASIC, '#{file_name}', baszac, baslen, 1",
-        "        savetap '#{file_name}.tap', CODE,  '#{file_name}', begin,  length, begin",
+        "        savetap '#{file_name}.tap', BASIC, '#{name}', baszac, baslen, 1",
+        "        savetap '#{file_name}.tap', CODE,  '#{name}', begin,  length, begin",
         "        savesna '#{file_name}.sna', begin",
-        "        savebin '#{file_name}.C',   begin, length",
-        "        savehob '#{file_name}.$C', '#{file_name}.C', begin, length",
+        "        savebin '#{file_name}.bin', begin, length",
+        "        savehob '#{file_name}.$C', '#{file_name}.bin', begin, length",
         ''
       ].join("\n")
     end
