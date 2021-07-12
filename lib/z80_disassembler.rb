@@ -171,7 +171,7 @@ module Z80Disassembler
         elsif temp
           resp += temp
         end
-        resp = hl_to_xx(resp, @xx) unless @xx.nil?
+        resp = hl_to_xx(resp) unless @xx.nil?
         if resp.include?('JR') || resp.include?('DJNZ')
           z = resp.split('#')
           z[1] = z[1].hex < 127 ? "$+#{z[1].hex + 2}" : "$-#{255 - z[1].hex - 1}"
@@ -182,21 +182,22 @@ module Z80Disassembler
       end
     end
 
-    def hl_to_xx(temp, reg)
-      @xx = nil
-      if temp.include?('HL')
-        temp.sub('HL', reg)
+    def hl_to_xx(temp)
+      resp = if temp.include?('HL')
+        temp.sub('HL', @xx)
       elsif temp.include?(' L')
-        temp.sub(' L', " #{reg}L")
+        temp.sub(' L', " #{@xx}L")
       elsif temp.include?(',L')
-        temp.sub(',L', ",#{reg}L")
+        temp.sub(',L', ",#{@xx}L")
       elsif temp.include?(' H')
-        temp.sub(' H', " #{reg}H")
+        temp.sub(' H', " #{@xx}H")
       elsif temp.include?(',H')
-        temp.sub(',H', ",#{reg}H")
+        temp.sub(',H', ",#{@xx}H")
       else
-        temp
+        @xx ? "DB ##{@xx == 'IX' ? 'DD' : 'FD'} ;\n#{''.ljust(16, ' ')} #{temp.ljust(16, ' ')}" : temp
       end
+      @xx = nil
+      resp
     end
 
     def displacement(byte, temp)
@@ -288,7 +289,7 @@ module Z80Disassembler
         @prefix = 'xx'; nil
       elsif ['dd', 'fd'].include?(@prev) && @temp
         temp = @temp; @temp = nil; @prefix = nil
-        hl_to_xx(temp, @xx)
+        hl_to_xx(temp)
       elsif @lambda && !@arg&.include?('HL')
         @prefix = 1; @temp
       else
